@@ -1,34 +1,51 @@
+import menus, settings
+import socket
+
 class App:
     def __init__(self):
-        self.menuText = """
-===========================================================================================
-    ____                       __   __  __            ______
-   / __ )___  ____  ____  ____/ /  / /_/ /_  ___     / ____/  ______  ____ _____  ________
-  / __  / _ \\/ __ \\/ __ \\/ __  /  / __/ __ \\/ _ \\   / __/ | |/_/ __ \\/ __ `/ __ \\/ ___/ _ \\
- / /_/ /  __/ /_/ / / / / /_/ /  / /_/ / / /  __/  / /____>  </ /_/ / /_/ / / / (__  )  __/
-/_____/\\___/\\____/_/ /_/\\__,_/   \\__/_/ /_/\\___/  /_____/_/|_/ .___/\\__,_/_/ /_/____/\\___/
-                                                            /_/
-===========================================================================================
-"""
-        self.mainMenu = """
-    1.  Start new game
-    2.  Load save
-    3.  Quit
-"""
+        # print(self.generateTextWindow(menus.MAIN_MENU))
+        self.server = settings.SERVER
+        self.port = settings.PORT
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect((self.server, self.port))
+        self.client.sendall(bytes("This is from Client",'UTF-8'))
         self.main_menu()
 
-    def main_menu(self):
-        mainMenuDict = {'1': newGame, '2': loadSave, '3'}
-        print(self.menuText)
+    def game_loop(self):
         while True:
-            print(self.mainMenu)
-            userInput = input()
-            if userInput not in mainMenuDict:
-                print("Unknown input...")
-            else:
+            in_data =  self.client.recv(1024)
+            print("From Server :" ,in_data.decode())
+            out_data = input()
+            self.client.sendall(bytes(out_data,'UTF-8'))
+            if out_data=='quit':
                 break
-    def newGame(self):
-        print("Created new game")
 
-    def loadGame(self):
-        print("Loaded save")
+    def main_menu(self):
+        while True:
+            in_data =  self.client.recv(1024)
+            print("From Server :" ,in_data.decode())
+            if in_data.decode()=="Creating game" or in_data.decode() == "Loading game":
+                self.game_loop()
+            print(self.generateTextWindow(menus.MAIN_MENU))
+            out_data = input()
+            self.client.sendall(bytes(out_data,'UTF-8'))
+            if out_data=='quit':
+                break
+        self.client.close()
+
+    def generateTextWindow(self, data):
+        dataList = data.split("\n")
+        returnStr = ""
+        maxLen = 0
+        for line in dataList:
+            if len(line) > maxLen:
+                maxLen = len(line)
+
+        returnStr += "+" + ("-" * (maxLen+2)) + "+\n"
+        for i in range(0, len(dataList)):
+            mystr = dataList[i]
+            while len(mystr) < maxLen:
+                mystr += " "
+            returnStr += "| " + mystr + " |\n"
+        returnStr += "+" + ("-" * (maxLen+2)) + "+\n"
+        return returnStr
